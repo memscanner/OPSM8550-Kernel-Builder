@@ -1,6 +1,6 @@
 name: Build OnePlus Kernel
 run-name: >-
-  ${{ inputs.platform }} | ${{ inputs.source_choice }} | ${{ inputs.root_solution }} | ftrace=${{ inputs.ftrace_level }}
+  ${{ inputs.platform }} | ${{ inputs.source_choice }} | ${{ inputs.root_solution }} | ftrace=${{ inputs.ftrace_level }} | btf=${{ inputs.debug_info_btf }}
 
 on:
   workflow_dispatch:
@@ -80,6 +80,13 @@ on:
           - none
           - trace
           - full
+      debug_info_btf:
+        description: >-
+          Enable CONFIG_DEBUG_INFO_BTF (exposes /sys/kernel/btf/vmlinux for
+          BPF CO-RE). Adds a .BTF section only; no ABI change.
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   prepare:
@@ -109,7 +116,7 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.prepare.outputs.build_matrix) }}
     concurrency:
-      group: kernel-ci-${{ github.workflow }}-${{ github.ref_name }}-${{ inputs.platform }}-${{ inputs.source_choice }}-${{ inputs.branch_mode }}-${{ inputs.kernel_branch }}-${{ matrix.ksu_type }}-${{ inputs.clang_choice }}-${{ inputs.ftrace_level }}
+      group: kernel-ci-${{ github.workflow }}-${{ github.ref_name }}-${{ inputs.platform }}-${{ inputs.source_choice }}-${{ inputs.branch_mode }}-${{ inputs.kernel_branch }}-${{ matrix.ksu_type }}-${{ inputs.clang_choice }}-${{ inputs.ftrace_level }}-${{ inputs.debug_info_btf }}
       cancel-in-progress: true
 
     permissions:
@@ -237,6 +244,7 @@ jobs:
       - name: Compile kernel
         env:
           FTRACE_LEVEL: ${{ inputs.ftrace_level }}
+          DEBUG_INFO_BTF: ${{ inputs.debug_info_btf }}
         run: bash "${GITHUB_WORKSPACE}/scripts/compile-kernel.sh"
 
       - name: Make AnyKernel3 zip

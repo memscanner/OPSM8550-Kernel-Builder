@@ -209,10 +209,42 @@ enable_ftrace_debug_configs() {
   fi
 }
 
+# ---------------------------------------------------------------------------
+# BTF (BPF Type Format) -- kernel type info exposed at /sys/kernel/btf/vmlinux,
+# needed by BPF CO-RE tools and anything that wants struct layouts at runtime.
+#
+# Only adds a .BTF section; struct layouts, symbol CRCs and therefore the
+# stock vendor_dlkm ABI are untouched. Requires pahole on the build host
+# (dwarves); the tree's scripts/pahole-flags.sh passes
+# --skip_encoding_btf_enum64 for pahole >= 1.24, which 5.10 needs.
+#
+# DEBUG_INFO_BTF=true|false (default true)
+# ---------------------------------------------------------------------------
+enable_btf_configs() {
+  local config_file="$1"
+
+  if [[ "${DEBUG_INFO_BTF:-true}" != "true" ]]; then
+    echo "[i] DEBUG_INFO_BTF=false: leaving BTF config untouched."
+    return 0
+  fi
+
+  enable_config_values "$config_file" \
+    CONFIG_DEBUG_INFO \
+    CONFIG_DEBUG_INFO_BTF
+  # Either of these makes DEBUG_INFO_BTF's dependencies unmet, and
+  # olddefconfig would then silently drop it.
+  disable_config_values "$config_file" \
+    CONFIG_DEBUG_INFO_REDUCED \
+    CONFIG_DEBUG_INFO_SPLIT
+
+  echo "[+] Enabled CONFIG_DEBUG_INFO_BTF (-> /sys/kernel/btf/vmlinux)."
+}
+
 apply_variant_configs() {
   local config_file="$1"
 
   enable_ftrace_debug_configs "$config_file"
+  enable_btf_configs "$config_file"
 
   if [[ "$KSU_TYPE" == *susfs* ]]; then
     enable_susfs_configs "$config_file"

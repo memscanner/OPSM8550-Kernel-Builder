@@ -15,6 +15,7 @@
 #   OFFICIAL_BUILD_TARGET KSU_TYPE KERNEL_BRANCH
 #   SUSFS_REF / SUSFS_PATCH_FILE (susfs variants only)
 #   FTRACE_LEVEL=none|func|trace|full (default func; see kernel-helpers.sh)
+#   DEBUG_INFO_BTF=true|false (default true; see kernel-helpers.sh)
 #
 set -euo pipefail
 
@@ -39,6 +40,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 FTRACE_LEVEL="${FTRACE_LEVEL:-func}"
 export FTRACE_LEVEL
+DEBUG_INFO_BTF="${DEBUG_INFO_BTF:-true}"
+export DEBUG_INFO_BTF
 
 IS_KPM_BUILD=0
 IS_SUSFS_BUILD=0
@@ -77,6 +80,18 @@ echo "==== BUILD REQUEST ===="
 echo "ksu_type     : ${KSU_TYPE}"
 echo "kernel_branch: ${KERNEL_BRANCH}"
 echo "ftrace_level : ${FTRACE_LEVEL}"
+echo "btf          : ${DEBUG_INFO_BTF}"
+
+if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
+  command -v pahole >/dev/null || {
+    echo "::error::DEBUG_INFO_BTF=true but pahole (dwarves) is not installed."
+    exit 1
+  }
+  echo "pahole       : $(pahole --version)"
+  if [[ -f scripts/pahole-flags.sh ]]; then
+    echo "pahole flags : $(PAHOLE=pahole sh scripts/pahole-flags.sh)"
+  fi
+fi
 
 # ---- KSU variant -------------------------------------------------------------
 install_ksu_variant "${KSU_TYPE}"
@@ -192,6 +207,11 @@ else
   fi
 fi
 
+if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
+  assert_config_y CONFIG_DEBUG_INFO     "BTF is generated from DWARF"
+  assert_config_y CONFIG_DEBUG_INFO_BTF "BTF was requested"
+fi
+
 if [[ "$IS_KSU_BUILD" -eq 1 ]]; then
   assert_config_y CONFIG_KSU "root support was requested"
 fi
@@ -210,7 +230,7 @@ fi
 if [[ "$PREFLIGHT_FAILED" -ne 0 ]]; then
   echo "::error::Preflight config assertions failed -- aborting before the expensive build."
   echo "==== RELEVANT CONFIG LINES ===="
-  grep -E '^(# )?CONFIG_(KSU|KPM|KALLSYMS|TRACING|FTRACE|FUNCTION_TRACER|DYNAMIC_FTRACE|DEBUG_FS|STACK_TRACER)' out/.config || true
+  grep -E '^(# )?CONFIG_(KSU|KPM|KALLSYMS|TRACING|FTRACE|FUNCTION_TRACER|DYNAMIC_FTRACE|DEBUG_FS|STACK_TRACER|DEBUG_INFO)' out/.config || true
   exit 1
 fi
 echo "[+] Preflight passed."
@@ -237,6 +257,16 @@ test -f out/arch/arm64/boot/Image || {
   exit 1
 }
 echo "[+] Kernel Image built successfully: out/arch/arm64/boot/Image"
+
+if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
+  if "${OBJDUMP}" -h out/vmlinux | grep -qw '\.BTF'; then
+    echo "[+] vmlinux carries a .BTF section:"
+    "${OBJDUMP}" -h out/vmlinux | grep -w '\.BTF' || true
+  else
+    echo "::error::CONFIG_DEBUG_INFO_BTF=y but out/vmlinux has no .BTF section."
+    exit 1
+  fi
+fi
 
 # =============================================================================
 # SYMBOL ASSERTIONS
