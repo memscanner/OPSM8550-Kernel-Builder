@@ -109,20 +109,20 @@ case "$KERNEL_SOURCE" in
   "OnePlusOSS")             SOURCE_NAME="OnePlus official source";       SOURCE_SLUG="oneplus-official" ;;
   "LineageOS")              SOURCE_NAME="LineageOS";                     SOURCE_SLUG="lineageos" ;;
   "lineage-ovaltine-dev")   SOURCE_NAME="LineageOS community (ovaltine)"; SOURCE_SLUG="lineage-community" ;;
-  "crdroidandroid")        SOURCE_NAME="crDroid";                       SOURCE_SLUG="crdroid" ;;
+  "crdroidandroid")         SOURCE_NAME="crDroid";                       SOURCE_SLUG="crdroid" ;;
   "OnePlus12R-development") SOURCE_NAME="OnePlus 12R development";       SOURCE_SLUG="oneplus12r-dev" ;;
 esac
 fi
 
 # ---- Clang preset ------------------------------------------------------------
 case "$INPUT_CLANG_CHOICE" in
-  "Recommended (auto-select based on branch)"               CLANG_VERSION="" ;;
-  "clang-r563880c (Android 16 / LineageOS 23.2+ era)"       CLANG_VERSION="clang-r563880c" ;;
-  "clang-r547379 (Android 16 / LineageOS 23.0 era)"         CLANG_VERSION="clang-r547379" ;;
-  "clang-r536225 (Android 15 / LineageOS 22.2 era)"         CLANG_VERSION="clang-r536225" ;;
-  "clang-r487747c (Android 14 / LineageOS 21 era)"          CLANG_VERSION="clang-r487747c" ;;
-  "clang-r450784d (Android 13 / LineageOS 20 era)"          CLANG_VERSION="clang-r450784d" ;;
-  "clang-r416183b1 (Android 12 / LineageOS 19.1 era)"       CLANG_VERSION="clang-r416183b1" ;;
+  "Recommended (auto-select based on branch)")               CLANG_VERSION="" ;;
+  "clang-r563880c (Android 16 / LineageOS 23.2+ era)")       CLANG_VERSION="clang-r563880c" ;;
+  "clang-r547379 (Android 16 / LineageOS 23.0 era)")         CLANG_VERSION="clang-r547379" ;;
+  "clang-r536225 (Android 15 / LineageOS 22.2 era)")         CLANG_VERSION="clang-r536225" ;;
+  "clang-r487747c (Android 14 / LineageOS 21 era)")          CLANG_VERSION="clang-r487747c" ;;
+  "clang-r450784d (Android 13 / LineageOS 20 era)")          CLANG_VERSION="clang-r450784d" ;;
+  "clang-r416183b1 (Android 12 / LineageOS 19.1 era)")       CLANG_VERSION="clang-r416183b1" ;;
   *)
     echo "::error::Unknown clang choice: $INPUT_CLANG_CHOICE"
     exit 1
