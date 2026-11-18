@@ -32,9 +32,11 @@
 #
 # To move forward deliberately: update the commit, build, flash, verify -- then
 # commit the new value. Set SUKISU_KPM_COMMIT="" to track the branch tip.
+# It must be the FULL 40-char SHA: `git fetch origin <sha>` rejects
+# abbreviated ones, and the pin then silently falls back to the branch tip.
 # ---------------------------------------------------------------------------
 SUKISU_KPM_REF="${SUKISU_KPM_REF:-builtin}"
-SUKISU_KPM_COMMIT="${SUKISU_KPM_COMMIT-b1d534bc}"
+SUKISU_KPM_COMMIT="${SUKISU_KPM_COMMIT-b1d534bc41941b2c818d7a1a1dac341e4aabfc2d}"
 
 # Check out an exact commit in an already-cloned shallow repo.
 # Falls back to the branch tip with a loud warning rather than failing the
