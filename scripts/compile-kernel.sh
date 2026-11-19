@@ -331,12 +331,27 @@ if [[ "$IS_KPM_BUILD" -eq 1 ]]; then
   rm -rf "$KPM_TOOL_DIR"
   mkdir -p "$KPM_TOOL_DIR"
 
+  # Pinned like SukiSU itself: patch_linux must match the KPM code in the
+  # pinned SukiSU tree. Tracking main broke boot -- upstream replaced the tool
+  # four times between 2026-10-18 and 10-27, and Images patched by the new one
+  # (only ~2 KB of changes vs ~2.4 MB appended before) do not boot on ingres
+  # with SukiSU @ b1d534bc. 547ae94b (2026-03-15) is what the last booting
+  # build (2026-08-02) used. Move it only together with SUKISU_KPM_COMMIT.
+  PATCH_LINUX_COMMIT="${PATCH_LINUX_COMMIT:-547ae94bcaec53d030398f857950c64662043a5d}"
+  PATCH_LINUX_SHA256="${PATCH_LINUX_SHA256-1bd00563e9d8fbbd11a16c0c1c59c5add406e6c5c92557def50f93d6f0aebe2d}"
   curl --retry 5 --retry-delay 3 --retry-all-errors -fLSs \
     -o "${KPM_TOOL_DIR}/patch_linux" \
-    "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU_patch/main/kpm/patch_linux" || {
-    echo "::error::Failed to download patch_linux from SukiSU_patch."
+    "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU_patch/${PATCH_LINUX_COMMIT}/kpm/patch_linux" || {
+    echo "::error::Failed to download patch_linux @ ${PATCH_LINUX_COMMIT} from SukiSU_patch."
     exit 1
   }
+  if [[ -n "$PATCH_LINUX_SHA256" ]]; then
+    echo "${PATCH_LINUX_SHA256}  ${KPM_TOOL_DIR}/patch_linux" | sha256sum -c - || {
+      echo "::error::patch_linux @ ${PATCH_LINUX_COMMIT} does not match the pinned sha256."
+      exit 1
+    }
+  fi
+  echo "[+] patch_linux pinned to ${PATCH_LINUX_COMMIT}"
   chmod +x "${KPM_TOOL_DIR}/patch_linux"
 
   KPM_LOG="${GITHUB_WORKSPACE}/${SOC}/kpm-patch.log"
