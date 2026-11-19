@@ -181,6 +181,28 @@ jobs:
             gcc-aarch64-linux-gnu \
             zip
 
+      # Ubuntu's pahole 1.25 needs well over 10 GB to turn this LTO_CLANG_FULL
+      # vmlinux's DWARF into BTF; on a 16 GB runner it swaps until the runner
+      # loses contact and the job dies without logs. pahole 1.28 reworked CU
+      # freeing ("Reduce memory usage by smarter deleting of CUs"), so build a
+      # newer one. It lands in /usr/local/bin, ahead of /usr/bin on PATH.
+      - name: Build pahole v1.30 (for BTF)
+        if: inputs.debug_info_btf
+        run: |
+          set -euo pipefail
+          SRC="${RUNNER_TEMP}/dwarves"
+          git clone --depth=1 --branch v1.30 --recurse-submodules --shallow-submodules \
+            https://github.com/acmel/dwarves.git "$SRC"
+          cmake -S "$SRC" -B "$SRC/build" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr/local -D__LIB=lib
+          cmake --build "$SRC/build" -j"$(nproc)"
+          sudo cmake --install "$SRC/build"
+          sudo ldconfig
+          hash -r
+          command -v pahole
+          pahole --version
+          test "$(pahole --version)" = "v1.30"
+
       - name: Resolve build profile
         id: resolve
         env:

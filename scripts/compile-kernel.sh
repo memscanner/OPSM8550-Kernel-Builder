@@ -87,7 +87,14 @@ if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
     echo "::error::DEBUG_INFO_BTF=true but pahole (dwarves) is not installed."
     exit 1
   }
-  echo "pahole       : $(pahole --version)"
+  echo "pahole       : $(pahole --version) ($(command -v pahole))"
+  # pahole < 1.28 needs >10 GB on this LTO vmlinux and kills the runner
+  # ~70 min in, with no logs. Fail now instead.
+  PAHOLE_VER_NUM="$(pahole --version | sed -E 's/^v([0-9]+)\.([0-9]+).*/\1\2/')"
+  if [[ "$PAHOLE_VER_NUM" -lt 128 ]]; then
+    echo "::error::pahole $(pahole --version) is too old for BTF on an LTO kernel (need >= v1.28)."
+    exit 1
+  fi
   if [[ -f scripts/pahole-flags.sh ]]; then
     echo "pahole flags : $(PAHOLE=pahole sh scripts/pahole-flags.sh)"
   fi
@@ -242,6 +249,7 @@ grep -E '^(# )?CONFIG_(TRACING|FTRACE|FUNCTION_TRACER|DYNAMIC_FTRACE|DEBUG_FS|ST
 
 # ---- Build -------------------------------------------------------------------
 ccache -z || true
+free -h || true
 
 if ! make -j"$(nproc)" O=out Image 2>&1 | tee build.log; then
   ccache -sv || true
