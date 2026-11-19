@@ -38,6 +38,37 @@
 SUKISU_KPM_REF="${SUKISU_KPM_REF:-builtin}"
 SUKISU_KPM_COMMIT="${SUKISU_KPM_COMMIT-b1d534bc41941b2c818d7a1a1dac341e4aabfc2d}"
 
+# The version SukiSU reports is NOT in its source: kernel/Makefile asks the
+# GitHub API at build time how many commits the branch has (40000 + count -
+# 2815), and falls back to 13000 / "v4.1.2-<sha>@HEAD" when it cannot count.
+# After upstream rewrote the repo (2026-11-15) a pinned shallow checkout
+# always hits the fallback, so the manager sees driver 13000 instead of the
+# 40856 it was built for. Pin what the 2026-08-02 build of this same commit
+# reported (read back from that kernel: "v4.1.3-b1d534bc@builtin"; manager
+# v4.1.3 has versionCode 40856). Change these together with SUKISU_KPM_COMMIT.
+SUKISU_KPM_VERSION="${SUKISU_KPM_VERSION-40856}"
+SUKISU_KPM_VERSION_FULL="${SUKISU_KPM_VERSION_FULL-v4.1.3-b1d534bc@builtin}"
+
+pin_sukisu_reported_version() {
+  local mk="${KSU_KERNEL_DIR:?}/Makefile"
+
+  [[ -z "$SUKISU_KPM_VERSION" ]] && { echo "[i] SukiSU version left to upstream's Makefile."; return 0; }
+  [[ -f "$mk" ]] || { echo "::error::${mk} not found; cannot pin the SukiSU version."; exit 1; }
+
+  sed -i -E \
+    -e "s|^KSU_VERSION[[:space:]]+:=.*|KSU_VERSION     := ${SUKISU_KPM_VERSION}|" \
+    -e "s|^KSU_VERSION_FULL[[:space:]]+:=.*|KSU_VERSION_FULL := ${SUKISU_KPM_VERSION_FULL}|" \
+    "$mk"
+
+  if ! grep -qx "KSU_VERSION     := ${SUKISU_KPM_VERSION}" "$mk" \
+     || ! grep -qx "KSU_VERSION_FULL := ${SUKISU_KPM_VERSION_FULL}" "$mk"; then
+    echo "::error::Could not pin the SukiSU version in ${mk}; its layout changed."
+    grep -nE '^(KSU_VERSION|KSU_VERSION_FULL|VERSION_TAG)[[:space:]]' "$mk" || true
+    exit 1
+  fi
+  echo "[+] SukiSU reported version pinned: ${SUKISU_KPM_VERSION} [${SUKISU_KPM_VERSION_FULL}]"
+}
+
 # Check out an exact commit in an already-cloned shallow repo.
 # Falls back to the branch tip with a loud warning rather than failing the
 # build, since a pin going stale should not be fatal.
@@ -210,6 +241,7 @@ install_ksu_variant() {
       echo "[+] KPM variant: SukiSU-Ultra @ ${SUKISU_KPM_REF} pinned to ${SUKISU_KPM_COMMIT:-branch tip}"
       setup_kernelsu_repo "SukiSU-Ultra" "SukiSU-Ultra" "$SUKISU_KPM_REF" 0 0 "$SUKISU_KPM_COMMIT"
       verify_kpm_capable_driver
+      pin_sukisu_reported_version
       ;;
     *)
       echo "::error::Unsupported ksu_type: $ksu_type"
