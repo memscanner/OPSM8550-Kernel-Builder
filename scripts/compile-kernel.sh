@@ -98,6 +98,7 @@ if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
   if [[ -f scripts/pahole-flags.sh ]]; then
     echo "pahole flags : $(PAHOLE=pahole sh scripts/pahole-flags.sh)"
   fi
+  patch_resolve_btfids_lenient
 fi
 
 # ---- KSU variant -------------------------------------------------------------
@@ -267,6 +268,8 @@ test -f out/arch/arm64/boot/Image || {
 echo "[+] Kernel Image built successfully: out/arch/arm64/boot/Image"
 
 if [[ "$DEBUG_INFO_BTF" == "true" ]]; then
+  echo "==== resolve_btfids: BTF_ID targets missing from BTF (patched to 0) ===="
+  grep 'WARN: resolve_btfids: unresolved symbol' build.log || echo "  (none)"
   if "${OBJDUMP}" -h out/vmlinux | grep -qw '\.BTF'; then
     echo "[+] vmlinux carries a .BTF section:"
     "${OBJDUMP}" -h out/vmlinux | grep -w '\.BTF' || true

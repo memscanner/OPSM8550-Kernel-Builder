@@ -240,6 +240,33 @@ enable_btf_configs() {
   echo "[+] Enabled CONFIG_DEBUG_INFO_BTF (-> /sys/kernel/btf/vmlinux)."
 }
 
+# 5.10's resolve_btfids aborts the vmlinux link on any BTF_ID() whose target
+# is missing from BTF. Under LTO, pahole leaves out functions whose prototype
+# it cannot trust (seen: vfs_fallocate, from bpf_d_path's allowlist), so the
+# link fails with "FAILED unresolved symbol vfs_fallocate". Upstream changed
+# this to a warning that patches in ID 0 ("tools/resolve_btfids: Emit warnings
+# and patch zero id for missing symbols"); apply the same change here. The
+# only effect of ID 0 is that the allowlist entry matches nothing, and a
+# function that is absent from BTF cannot be attached to anyway.
+patch_resolve_btfids_lenient() {
+  local f="tools/bpf/resolve_btfids/main.c"
+
+  [[ -f "$f" ]] || { echo "[i] ${f} not found; skipping resolve_btfids patch."; return 0; }
+  if grep -q 'WARN: resolve_btfids: unresolved symbol' "$f"; then
+    echo "[i] resolve_btfids already warns on unresolved symbols."
+    return 0
+  fi
+
+  perl -0pi -e 's/\tif \(!id->id\) \{\n\t\tpr_err\("FAILED unresolved symbol %s\\n", id->name\);\n\t\treturn -EINVAL;\n\t\}\n/\tif (!id->id)\n\t\tpr_err("WARN: resolve_btfids: unresolved symbol %s\\n", id->name);\n/' "$f"
+
+  if grep -q 'FAILED unresolved symbol' "$f"; then
+    echo "::error::Could not patch ${f}; the unresolved-symbol check changed shape."
+    grep -n -B2 -A3 'unresolved symbol' "$f" || true
+    exit 1
+  fi
+  echo "[+] resolve_btfids: unresolved BTF_ID symbols now warn instead of failing."
+}
+
 apply_variant_configs() {
   local config_file="$1"
 
